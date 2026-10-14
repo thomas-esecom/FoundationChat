@@ -30,6 +30,10 @@ struct TerminalOutputView: NSViewRepresentable {
         view.textContainer?.containerSize = NSSize(width: scroll.contentSize.width, height: .greatestFiniteMagnitude)
         view.setAccessibilityLabel("Terminalausgabe von fm chat")
         scroll.documentView = view
+        context.coordinator.scroll = scroll
+        scroll.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(context.coordinator, selector: #selector(Coordinator.boundsChanged(_:)),
+            name: NSView.boundsDidChangeNotification, object: scroll.contentView)
         return scroll
     }
 
@@ -37,14 +41,51 @@ struct TerminalOutputView: NSViewRepresentable {
         guard let view = scroll.documentView as? TerminalTextView else { return }
         view.updateReplies(replies, onCopy: onCopy)
         guard view.textStorage?.isEqual(to: text) != true else { return }
-        let followsBottom = scroll.contentView.bounds.maxY >= view.bounds.maxY - 40
+        let coordinator = context.coordinator
+        coordinator.isUpdating = true
+        defer {
+            coordinator.lastBounds = scroll.contentView.bounds
+            coordinator.isUpdating = false
+        }
         let selection = view.selectedRange()
         view.textStorage?.setAttributedString(text)
+        // Lay out and size the document before scrolling; NSTextView otherwise uses
+        // the preceding frame while the streamed response is still growing.
+        view.setFrameSize(NSSize(width: scroll.contentSize.width, height: view.frame.height))
+        view.layoutSubtreeIfNeeded()
+        if let container = view.textContainer, let manager = view.layoutManager {
+            manager.ensureLayout(for: container)
+            let contentHeight = max(manager.usedRect(for: container).maxY, manager.extraLineFragmentRect.maxY)
+            view.setFrameSize(NSSize(width: scroll.contentSize.width,
+                height: max(scroll.contentSize.height, ceil(contentHeight + 2 * view.textContainerInset.height))))
+        }
         let length = text.length
-        if followsBottom && selection.length == 0 {
-            view.scrollRangeToVisible(NSRange(location: length, length: 0))
+        if coordinator.followsOutput && selection.length == 0 {
+            scroll.contentView.scroll(to: NSPoint(x: 0, y: max(0, view.frame.height - scroll.contentSize.height)))
+            scroll.reflectScrolledClipView(scroll.contentView)
         } else if NSMaxRange(selection) <= length {
             view.setSelectedRange(selection)
         }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    @MainActor
+    final class Coordinator: NSObject {
+        weak var scroll: NSScrollView?
+        var followsOutput = true
+        var isUpdating = false
+        var lastBounds = NSRect.zero
+
+        @objc func boundsChanged(_ notification: Notification) {
+            guard let scroll else { return }
+            let bounds = scroll.contentView.bounds
+            defer { lastBounds = bounds }
+            guard !isUpdating, bounds.size == lastBounds.size, bounds.origin != lastBounds.origin,
+                  let document = scroll.documentView else { return }
+            followsOutput = bounds.maxY >= document.frame.maxY - 40
+        }
+
+        deinit { NotificationCenter.default.removeObserver(self) }
     }
 }

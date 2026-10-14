@@ -122,6 +122,24 @@ struct SavedChatStoreTests {
         #expect(FileManager.default.fileExists(atPath: directory.appending(path: "keep.json").path))
     }
 
+    @Test func imageContentDoesNotHideSavedChatOrItsQuestion() async throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let value: [String: Any] = ["modelName": "system", "transcript": ["type": "model", "version": "1", "transcript": ["entries": [
+            ["role": "user", "contents": [
+                ["type": "image", "id": "image-1", "image": "AQID"],
+                ["type": "text", "text": "Welche Farbe hat der Kreis?"],
+            ]],
+            ["role": "response", "contents": [["type": "text", "text": "Rot"]]],
+        ]]]]
+        try JSONSerialization.data(withJSONObject: value).write(to: directory.appending(path: "image-chat.json"))
+        let catalog = try await SavedChatStore(directory: directory).read()
+        #expect(catalog.chats.count == 1)
+        #expect(catalog.chats[0].title == "Welche Farbe hat der Kreis?")
+        #expect(catalog.chats[0].preview == "Rot")
+        #expect(catalog.warnings.isEmpty)
+    }
+
     private struct TestTrash: ChatTrash {
         let directory: URL
         var failingID: String? = nil

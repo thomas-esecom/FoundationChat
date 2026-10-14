@@ -36,6 +36,8 @@ final class ChatSession {
     @ObservationIgnored private let historyStore = SavedChatStore(directory: FileManager.default.homeDirectoryForCurrentUser.appending(path: ".fm/sessions"))
     @ObservationIgnored private var isRefreshingHistory = false
     @ObservationIgnored private var sessionStartedAt = Date.distantPast
+    @ObservationIgnored private var stagedImage: TemporaryChatImage?
+    @ObservationIgnored private var imageStartingStatus = ""
 
     func start(continuing: Bool = false, resuming: String? = nil) {
         guard !isUpdatingHistory else { return }
@@ -134,12 +136,24 @@ final class ChatSession {
     func send(_ text: String) -> Bool {
         guard isRunning, canSend, !isLoadingDocument, !isUpdatingHistory, stopDeadline == nil else { return false }
         let message = document?.prompt(with: text) ?? text
-        let normalized = message.replacing("\r\n", with: "\n").replacing("\r", with: "\n")
-        // Bracketed paste preserves document paragraphs as one prompt in fm's TUI.
-        let line = transcript.usesBracketedPaste ? normalized : normalized.replacing("\n", with: " ")
-        let input = transcript.usesBracketedPaste ? "\u{1B}[200~" + line + "\u{1B}[201~\r" : line + "\n"
-        let data = Data(input.utf8)
+        if document?.isImage == true, !transcript.usesBracketedPaste {
+            errorMessage = "Der laufende Chat unterstützt keine Bildanhänge. Bitte einen neuen Chat starten."
+            return false
+        }
+        removeStagedImage()
+        if let document, document.isImage {
+            do {
+                stagedImage = try TemporaryChatImage(document)
+                imageStartingStatus = modelStatus
+            } catch {
+                errorMessage = "Bild konnte nicht übergeben werden: \(error.localizedDescription)"
+                return false
+            }
+        }
+        // Paste the file path separately: fm registers it as an image, then appends the user's text.
+        guard let data = TerminalInput.encode(message, imagePath: stagedImage?.url.path, bracketedPaste: transcript.usesBracketedPaste) else { return false }
         guard pendingInput.count + data.count <= 65_536 else {
+            removeStagedImage()
             errorMessage = "Die Eingabe ist zu lang. Bitte auf höchstens 64 KB kürzen."
             return false
         }
@@ -159,7 +173,7 @@ final class ChatSession {
             isLoadingDocument = false
         }
         do { document = try await documentReader.read(url) }
-        catch { errorMessage = "Dokument konnte nicht angehängt werden: \(error.localizedDescription)" }
+        catch { errorMessage = "Datei konnte nicht angehängt werden: \(error.localizedDescription)" }
     }
 
     func removeDocument() {
@@ -265,6 +279,7 @@ final class ChatSession {
             pendingInput.append(transcript.takeReplies())
             updateOutput()
             canSend = transcript.isReady && stopDeadline == nil
+            if canSend, stagedImage != nil, modelStatus != imageStartingStatus { removeStagedImage() }
         }
     }
 
@@ -289,6 +304,13 @@ final class ChatSession {
         canSend = false
         pendingInput.removeAll()
         stopDeadline = nil
+        removeStagedImage()
+    }
+
+    private func removeStagedImage() {
+        stagedImage?.remove()
+        stagedImage = nil
+        imageStartingStatus = ""
     }
 
     func setTerminalSize(columns: Int, rows: Int) {

@@ -2,7 +2,9 @@ import CoreGraphics
 import CoreText
 import DocumentSupport
 import Foundation
+import ImageIO
 import Testing
+import UniformTypeIdentifiers
 
 struct DocumentReaderTests {
     @Test func readsUTF8AndPreservesParagraphsInPrompt() async throws {
@@ -56,6 +58,51 @@ struct DocumentReaderTests {
         let url = try temporaryFile(name: "Notiz.txt", data: Data(" \n ".utf8))
         defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
         await #expect(throws: DocumentReadError.noText) { try await DocumentReader().read(url) }
+    }
+
+    @Test(arguments: ["PNG", "JPG", "jpeg"])
+    func readsImagesWithoutConvertingThemToText(_ kind: String) async throws {
+        let data = try imageData(kind.lowercased() == "png" ? .png : .jpeg)
+        let url = try temporaryFile(name: "Foto mit Leerzeichen.\(kind)", data: data)
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let image = try await DocumentReader().read(url)
+        #expect(image.isImage)
+        #expect(image.imageData == data)
+        #expect(image.text.isEmpty)
+        #expect(image.name == url.lastPathComponent)
+        #expect(image.imageExtension == (kind.lowercased() == "png" ? "png" : "jpg"))
+        #expect(image.prompt(with: "Beschreibe dieses Bild") == "Beschreibe dieses Bild")
+    }
+
+    @Test func rejectsTextRenamedToJPG() async throws {
+        let url = try temporaryFile(name: "Fake.jpg", data: Data("Ich bin kein Bild".utf8))
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        await #expect(throws: DocumentReadError.invalidImage) { try await DocumentReader().read(url) }
+    }
+
+    @Test func rejectsOtherImageFormatsRenamedToPNG() async throws {
+        let url = try temporaryFile(name: "Fake.png", data: imageData(.tiff))
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        await #expect(throws: DocumentReadError.invalidImage) { try await DocumentReader().read(url) }
+    }
+
+    @Test func rejectsOversizedImageBeforeDecoding() async throws {
+        let url = try temporaryFile(name: "Gross.jpg", data: Data(repeating: 0, count: 10 * 1024 * 1024 + 1))
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        await #expect(throws: DocumentReadError.fileTooLarge) { try await DocumentReader().read(url) }
+    }
+
+    private func imageData(_ type: UTType) throws -> Data {
+        let context = try #require(CGContext(data: nil, width: 16, height: 16, bitsPerComponent: 8,
+            bytesPerRow: 64, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(CGColor(red: 0, green: 0.7, blue: 0.2, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: 16, height: 16))
+        let image = try #require(context.makeImage())
+        let data = NSMutableData()
+        let destination = try #require(CGImageDestinationCreateWithData(data, type.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, image, nil)
+        #expect(CGImageDestinationFinalize(destination))
+        return data as Data
     }
 
     private func temporaryFile(name: String, data: Data) throws -> URL {

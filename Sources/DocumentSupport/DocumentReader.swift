@@ -1,8 +1,11 @@
 import Foundation
+import ImageIO
 import PDFKit
+import UniformTypeIdentifiers
 
 public actor DocumentReader {
     public static let textExtensions = ["txt", "md", "markdown", "csv", "tsv", "json", "xml", "html", "log", "swift", "php", "js", "css", "sql", "yaml", "yml"]
+    public static let imageExtensions = ["jpg", "jpeg", "png"]
     private let maximumFileBytes = 10 * 1024 * 1024
     private let maximumTextBytes = 48 * 1024
 
@@ -10,11 +13,27 @@ public actor DocumentReader {
 
     public func read(_ url: URL) throws -> ChatDocument {
         let kind = url.pathExtension.lowercased()
-        guard kind == "pdf" || Self.textExtensions.contains(kind) else { throw DocumentReadError.unsupportedFormat }
+        guard kind == "pdf" || Self.textExtensions.contains(kind) || Self.imageExtensions.contains(kind) else { throw DocumentReadError.unsupportedFormat }
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         let data = try handle.read(upToCount: maximumFileBytes + 1) ?? Data()
         guard data.count <= maximumFileBytes else { throw DocumentReadError.fileTooLarge }
+
+        if Self.imageExtensions.contains(kind) {
+            guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+                  let type = CGImageSourceGetType(source),
+                  [UTType.jpeg.identifier, UTType.png.identifier].contains(type as String),
+                  let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+                  let width = properties[kCGImagePropertyPixelWidth] as? Int,
+                  let height = properties[kCGImagePropertyPixelHeight] as? Int, width > 0, height > 0 else {
+                throw DocumentReadError.invalidImage
+            }
+            guard width <= 64_000_000 / height else { throw DocumentReadError.imageTooLarge }
+            let options: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: 32]
+            guard CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) != nil else { throw DocumentReadError.invalidImage }
+            return ChatDocument(name: url.lastPathComponent, imageData: data,
+                imageExtension: type as String == UTType.jpeg.identifier ? "jpg" : "png")
+        }
 
         let text: String
         if kind == "pdf" {

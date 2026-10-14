@@ -4,7 +4,7 @@ Native macOS-App als Terminaloberfläche für Apples `/usr/bin/fm chat`. SwiftUI
 
 ## Download
 
-[FoundationChat 0.9 herunterladen](https://github.com/thomas-esecom/FoundationChat/releases/download/v0.9/FoundationChat-0.9-macOS-arm64.zip). Das ZIP entpacken und `FoundationChat.app` in den Ordner „Programme“ ziehen. Der Download ist für Macs mit Apple Silicon, macOS 27 und verfügbarem Apple-Intelligence-Modell gedacht. Die App ist ad-hoc signiert und nicht notarisiert; macOS kann beim ersten Öffnen eine Sicherheitsfreigabe verlangen.
+[FoundationChat 0.9.1 herunterladen](https://github.com/thomas-esecom/FoundationChat/releases/download/v0.9.1/FoundationChat-0.9.1-macOS-arm64.zip). Das ZIP entpacken und `FoundationChat.app` in den Ordner „Programme“ ziehen. Der Download ist für Macs mit Apple Silicon, macOS 27 und verfügbarem Apple-Intelligence-Modell gedacht. Die App ist ad-hoc signiert und nicht notarisiert; macOS kann beim ersten Öffnen eine Sicherheitsfreigabe verlangen.
 
 ## Voraussetzungen
 
@@ -29,7 +29,9 @@ Das Swift-Package lässt sich über `Package.swift` in Xcode öffnen. Die fertig
 - Das App-Icon ist ein eigenes, mit dem integrierten ImageGen-Werkzeug erstelltes Motiv ohne Apple-Logo. Quelle: `Resources/AppIcon.png`; Prompt: `Resources/AppIcon.prompt.txt`. `scripts/build-icon.sh` erzeugt daraus die macOS-Icondatei.
 
 - Dunkle Oberfläche mit abgesetzter Headerleiste und Eingabebereich. Modellstatus links und Prozessstatus rechts im Footer.
-- Über die Büroklammer ein PDF mit auslesbarem Text oder eine UTF-8-Textdatei (z. B. TXT, Markdown, CSV oder Quellcode) anhängen. Der Text wird mit der nächsten Nachricht an das lokale Modell übergeben; es wird keine Datei auf einen Server hochgeladen. Der Anhang kann vor dem Senden entfernt werden.
+- Über die Büroklammer JPG/JPEG, PNG, ein PDF mit auslesbarem Text oder eine UTF-8-Textdatei (z. B. TXT, Markdown, CSV oder Quellcode) anhängen. Bilder werden als echte Bildanhänge an den laufenden lokalen Chat übergeben, Dokumente als Text. Es wird keine Datei auf einen Server hochgeladen. Der Anhang kann vor dem Senden entfernt werden.
+- Für Bildanhänge wird eine private temporäre Kopie angelegt und nach der Verarbeitung bzw. beim Beenden entfernt. `fm` speichert den Bildinhalt im Chatverlauf; Fragen dazu können später fortgesetzt werden. Maximal 10 MB pro Datei und 64 Megapixel pro Bild. Beschädigte Dateien werden abgewiesen.
+- Während einer Antwort scrollt die Ausgabe automatisch mit. Manuelles Hochscrollen hält die Position zum Lesen fest; am unteren Ende folgt die Ansicht wieder neuen Ausgaben.
 - Maximal 10 MB Dateigröße und 48 KB extrahierter Text. Es wird nichts automatisch gekürzt. Gescannten PDFs fehlt ohne OCR auslesbarer Text; Word-Dateien werden derzeit nicht unterstützt. Der verfügbare Modellkontext (aktuell 8192 Tokens inklusive Gespräch) kann schon vor der Dateigrößengrenze ausgeschöpft sein; die entsprechende `fm`-Fehlermeldung erscheint in der Ausgabe.
 - Die App startet `fm chat --model system` automatisch in einem Pseudoterminal. Der mitgelieferte Terminal-Launcher verbindet es als steuerndes Terminal, sodass `fm` seine interaktive Ansicht verwendet.
 - Fragen erscheinen grau, Antworten hell, Überschriften farbig und Code abgesetzt. ANSI-Farben, Fett- und Code-Darstellung stammen direkt aus `fm`.

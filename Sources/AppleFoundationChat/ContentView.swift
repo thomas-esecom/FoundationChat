@@ -9,7 +9,7 @@ struct ContentView: View {
     @State private var inputFocusRequest = 0
     @State private var inputHeight: CGFloat = 24
 
-    private static let documentTypes: [UTType] = [.pdf] + DocumentReader.textExtensions.compactMap {
+    private static let documentTypes: [UTType] = [.pdf, .jpeg, .png] + DocumentReader.textExtensions.compactMap {
         UTType(filenameExtension: $0)
     }
 
@@ -21,22 +21,22 @@ struct ContentView: View {
 
             VStack(spacing: 0) {
                 HStack(alignment: .center) {
-                    Button("Dokument anhängen", systemImage: "paperclip") { showingDocumentPicker = true }
+                    Button("Datei anhängen", systemImage: "paperclip") { showingDocumentPicker = true }
                         .labelStyle(.iconOnly)
                         .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
                         .disabled(session.isLoadingDocument)
-                        .help("PDF oder Textdatei anhängen")
+                        .help("JPG, PNG, PDF oder Textdatei anhängen")
                     if session.isLoadingDocument {
                         ProgressView()
                             .controlSize(.small)
-                            .accessibilityLabel("Dokument wird gelesen")
+                            .accessibilityLabel("Datei wird gelesen")
                     } else if let document = session.document {
                         HStack(spacing: 6) {
-                            Label(document.name, systemImage: "doc.text")
+                            Label(document.name, systemImage: document.isImage ? "photo" : "doc.text")
                                 .lineLimit(1)
-                                .help("Dokumenttext lokal mit der nächsten Nachricht mitsenden")
-                            Button("Dokument entfernen", systemImage: "xmark", action: session.removeDocument)
+                                .help(document.isImage ? "Bild mit der nächsten Nachricht lokal analysieren lassen" : "Dokumenttext lokal mit der nächsten Nachricht mitsenden")
+                            Button("Anhang entfernen", systemImage: "xmark", action: session.removeDocument)
                                 .labelStyle(.iconOnly)
                                 .buttonStyle(.plain)
                         }
