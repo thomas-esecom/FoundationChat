@@ -7,7 +7,10 @@ final class TerminalScrollView: NSScrollView {
 
     override func layout() {
         super.layout()
-        let size = contentSize
+        guard let window else { return }
+        // Growing the composer only changes the visible viewport. Keep fm's row count
+        // tied to the window so typing and submitting do not trigger TUI redraws.
+        let size = NSSize(width: contentSize.width, height: window.contentLayoutRect.height - 64)
         guard size != lastSize, size.width > 0, size.height > 0 else { return }
         lastSize = size
         let columns = Int((size.width - 86) / TerminalTextRenderer.characterWidth)
