@@ -17,5 +17,6 @@ let package = Package(
         .testTarget(name: "TerminalCoreTests", dependencies: ["TerminalCore"], resources: [.copy("Fixtures")]),
         .testTarget(name: "DocumentSupportTests", dependencies: ["DocumentSupport"]),
         .testTarget(name: "ChatHistoryTests", dependencies: ["ChatHistory"]),
+        .testTarget(name: "PromptInputTests", dependencies: ["AppleFoundationChat"]),
     ]
 )

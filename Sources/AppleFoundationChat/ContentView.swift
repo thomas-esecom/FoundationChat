@@ -6,7 +6,8 @@ struct ContentView: View {
     @Bindable var session: ChatSession
     @State private var prompt = ""
     @State private var showingDocumentPicker = false
-    @FocusState private var inputFocused: Bool
+    @State private var inputFocusRequest = 0
+    @State private var inputHeight: CGFloat = 24
 
     private static let documentTypes: [UTType] = [.pdf] + DocumentReader.textExtensions.compactMap {
         UTType(filenameExtension: $0)
@@ -45,13 +46,9 @@ struct ContentView: View {
                         .background(.quaternary, in: .capsule)
                         .frame(maxWidth: 200)
                     }
-                    TextField("", text: $prompt, prompt: Text("Leg los...").foregroundStyle(.gray))
-                        .textFieldStyle(.plain)
-                        .font(.body.monospaced())
-                        .focused($inputFocused)
-                        .onSubmit(sendPrompt)
-                        .disabled(!session.canSend)
-                        .accessibilityLabel("Chatnachricht")
+                    PromptInputView(text: $prompt, isEnabled: session.isRunning, focusRequest: inputFocusRequest,
+                        onHeightChange: { inputHeight = $0 }, onSubmit: sendPrompt)
+                        .frame(height: inputHeight)
                     Button("Senden", systemImage: "arrow.up", action: sendPrompt)
                         .labelStyle(.iconOnly)
                         .buttonStyle(.borderedProminent)
@@ -60,8 +57,10 @@ struct ContentView: View {
                         .disabled(!session.canSend || session.isLoadingDocument || prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         .help("Nachricht senden (Return)")
                 }
-                .frame(minHeight: 32)
-                .padding()
+                .frame(minHeight: 28)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color(red: 0.145, green: 0.155, blue: 0.165))
 
                 HStack(alignment: .lastTextBaseline) {
                     Text(session.modelStatus.isEmpty ? "Warte auf Modellstatus …" : session.modelStatus)
@@ -79,8 +78,9 @@ struct ContentView: View {
                         .layoutPriority(1)
                         .help(session.status)
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 10)
+                .padding(.horizontal, 12)
+                .padding(.top, 5)
+                .padding(.bottom, 5)
             }
             .background(Color(red: 0.16, green: 0.17, blue: 0.18))
         }
@@ -111,10 +111,10 @@ struct ContentView: View {
         }
         .task {
             if !session.isRunning { session.start() }
-            inputFocused = true
+            inputFocusRequest += 1
         }
         .onChange(of: session.canSend) {
-            if session.canSend { inputFocused = true }
+            if session.canSend { inputFocusRequest += 1 }
         }
         .alert("FoundationChat", isPresented: Binding(
             get: { session.errorMessage != nil },
@@ -129,6 +129,6 @@ struct ContentView: View {
     private func sendPrompt() {
         guard !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         if session.send(prompt) { prompt = "" }
-        inputFocused = true
+        inputFocusRequest += 1
     }
 }

@@ -30,7 +30,7 @@ Das Swift-Package lässt sich über `Package.swift` in Xcode öffnen. Die fertig
 - Die App startet `fm chat --model system` automatisch in einem Pseudoterminal. Der mitgelieferte Terminal-Launcher verbindet es als steuerndes Terminal, sodass `fm` seine interaktive Ansicht verwendet.
 - Fragen erscheinen grau, Antworten hell, Überschriften farbig und Code abgesetzt. ANSI-Farben, Fett- und Code-Darstellung stammen direkt aus `fm`.
 - Unter der Eingabe steht die echte `fm`-Statuszeile: Modell, Gesprächsrunde, Eingabe-/Ausgabetokens und belegter Kontext. Sie aktualisiert sich während der Antwort und wird nicht geschätzt.
-- Return bzw. der Senden-Button übergibt eine Nachricht. Dokumentabsätze bleiben durch die interaktive Einfügefunktion von `fm` erhalten.
+- Enter bzw. der Senden-Button übergibt eine Nachricht, Shift-Enter fügt einen Umbruch ein. Die Eingabe bricht automatisch um und wächst bis zu einer Höhe von 160 Punkten; längere Eingaben lassen sich scrollen. `- ` am Zeilenanfang beginnt eine Aufzählung, die Shift-Enter fortsetzt. Ein Umbruch auf einem leeren Listenpunkt beendet die Liste. Dokumentabsätze bleiben durch die interaktive Einfügefunktion von `fm` erhalten.
 - **Neuer Chat / ⌘N:** aktuelle Sitzung beenden und eine neue starten.
 - **Fortsetzen / ⇧⌘N:** die letzte von `fm` gespeicherte Sitzung mit `--continue` öffnen. Die Speicherung liegt bei `fm` unter `~/.fm/sessions/`.
 - **Chat → Unterbrechen / Ctrl+C:** SIGINT an `fm` senden. Je nach Verhalten des CLI kann dies die Sitzung beenden.
