@@ -2,6 +2,10 @@
 
 Native macOS-App als Terminaloberfläche für Apples `/usr/bin/fm chat`. SwiftUI-Fenster, auswählbare Terminalausgabe und ein eigenes Eingabefeld. Keine externen Pakete und kein API-Schlüssel.
 
+## Download
+
+[FoundationChat 0.9 herunterladen](https://github.com/thomas-esecom/FoundationChat/releases/download/v0.9/FoundationChat-0.9-macOS-arm64.zip). Das ZIP entpacken und `FoundationChat.app` in den Ordner „Programme“ ziehen. Der Download ist für Macs mit Apple Silicon, macOS 27 und verfügbarem Apple-Intelligence-Modell gedacht. Die App ist ad-hoc signiert und nicht notarisiert; macOS kann beim ersten Öffnen eine Sicherheitsfreigabe verlangen.
+
 ## Voraussetzungen
 
 - macOS 27 oder neuer mit `/usr/bin/fm`
